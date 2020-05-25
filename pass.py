@@ -3,6 +3,8 @@ import os
 import subprocess
 import glob
 import shlex
+import threading
+import hashlib
 
 import keypirinha as kp
 import keypirinha_util as kpu
@@ -22,6 +24,8 @@ class Pass(kp.Plugin):
         self.PASS_STORE = settings.get('path', 'pass',
             fallback=os.path.join(self._get_wsl_home(), '.password-store'))
         self.log("Password store: {}".format(self.PASS_STORE))
+        self.CLIP_TIME = settings.get('clip_time', 'pass', fallback=45)
+        self._clip_timer = None
 
     def on_start(self):
         self._read_config()
@@ -96,7 +100,29 @@ class Pass(kp.Plugin):
             # Otherwise, put full line in clipboard
             data = self._pass_kv_split(item.target())[1]
         if data is not None:
-            kpu.set_clipboard(data)
+            self._put_data_in_clipboard(data)
+
+    def _put_data_in_clipboard(self, data):
+        # XXX: This only works with text clipboard data, not fancy Windows objects (files, office content, etc)
+        orig_clip = kpu.get_clipboard()
+        pass_hash = hashlib.md5(data.encode()).digest()
+
+        # keypirinha.delay isn't implemented yet, so a timer will do
+        kwargs = {'orig_clip': orig_clip, 'pass_hash': pass_hash}
+        self._clip_timer = threading.Timer(self.CLIP_TIME, self._timer_reset_clipboard, kwargs=kwargs)
+
+        kpu.set_clipboard(data)
+        self._clip_timer.start()
+
+    @staticmethod
+    def _timer_reset_clipboard(orig_clip=None, pass_hash=None):
+        if orig_clip is None or pass_hash is None:
+            return
+        # Only reset clip if clipboard still contains pass
+        cur_clip = kpu.get_clipboard()
+        clip_hash = hashlib.md5(cur_clip.encode()).digest()
+        if clip_hash == pass_hash:
+            kpu.set_clipboard(orig_clip)
 
     def _winpath_to_name(self, path):
         return path.replace('\\','/')[:-len('.gpg')]
