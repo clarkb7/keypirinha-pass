@@ -1,8 +1,3 @@
-from datetime import datetime
-import os
-import subprocess
-import glob
-import shlex
 import threading
 import hashlib
 
@@ -21,9 +16,19 @@ class Pass(kp.Plugin):
 
     def _read_config(self):
         settings = self.load_settings()
-        self.PASS_STORE = settings.get('path', 'pass',
-            fallback=os.path.join(self._get_wsl_home(), '.password-store'))
-        self.log("Password store: {}".format(self.PASS_STORE))
+
+        backend = settings.get('backend', 'main', fallback='wsl')
+        if backend == 'wsl':
+            from .backends.wsl import WslBackend
+            self.backend = WslBackend()
+        else:
+            raise ValueError("Unknown backend: {}".format(backend))
+
+        pass_store = settings.get('path', 'pass',
+            fallback=self.backend.password_store)
+        self.backend.set_password_store(pass_store)
+
+        self.log("Password store: {}".format(pass_store))
         self.CLIP_TIME = settings.get('clip_time', 'pass', fallback=45)
         self._clip_timer = None
 
@@ -35,10 +40,9 @@ class Pass(kp.Plugin):
             self._read_config()
 
     def on_catalog(self):
-        # Refresh list of paths in password-store
-        paths = list(glob.glob(os.path.join(self.PASS_STORE, '**', '*.gpg'), recursive=True))
-        self.paths = [os.path.relpath(p, self.PASS_STORE) for p in paths]
-        self.log("Found {} files in password store".format(len(self.paths)))
+        # Refresh list of names in password-store
+        self.names = self.backend.get_pass_list()
+        self.log("Found {} files in password store".format(len(self.names)))
 
         # Add pass command to catalog
         catalog = []
@@ -61,8 +65,7 @@ class Pass(kp.Plugin):
         items = []
         if items_chain[-1].target() == 'pass':
             # Display list of pass files
-            for p in self.paths:
-                name = self._winpath_to_name(p)
+            for name in self.names:
                 items.append(self.create_item(
                     category=self.CAT_FILE,
                     label=name,
@@ -77,8 +80,11 @@ class Pass(kp.Plugin):
             # User pressed tab on a pass file, show its contents
             pass_name = items_chain[-1].target()
             # Display pass file contents
-            lines = self._get_pass_contents(pass_name)
+            lines = self.backend.get_pass_contents(pass_name).split('\n')
             for l in lines:
+                # Skip empty lines
+                if not l:
+                    continue
                 items.append(self.create_item(
                     category=self.CAT_FILE_LINE,
                     label=l,
@@ -93,7 +99,7 @@ class Pass(kp.Plugin):
         data = None
         if item.category() == self.CAT_FILE:
             # User selected file, put password in clipboard
-            data = self._get_password(item.target())
+            data = self.backend.get_password(item.target())
         elif item.category() == self.CAT_FILE_LINE:
             # User selected a line from the pass file
             # If it is a 'Key: Value' format, put Value in clipboard
@@ -124,49 +130,14 @@ class Pass(kp.Plugin):
         if clip_hash == pass_hash:
             kpu.set_clipboard(orig_clip)
 
-    def _winpath_to_name(self, path):
-        return path.replace('\\','/')[:-len('.gpg')]
-
-    def _get_password(self, name):
-        return self._get_pass_contents(name)[0]
-
-    def _get_pass_contents(self, name):
-        args = ['bash', '-c', 'pass show {}'.format(shlex.quote(name))]
-        cp = self._subp_run(args)
-        if not cp.stdout:
-            # Might need to enter passphrase, so open a new console to let gpg request it
-            # XXX: This could all be done in one call if I could get subprocess to leave stdin a tty and use PIPE for stdout
-            cp = self._subp_run(args, hide=False, collect_output=False)
-            cp = self._subp_run(args)
-        lines = cp.stdout
-        return [l for l in lines.split('\n') if l]
-
-    def _pass_kv_split(self, line):
+    @staticmethod
+    def _pass_kv_split(line):
+        """Splits key value pair from a pass file, returns a tuple.
+        Always returns a value, returns None for key if it does not exist.
+        Example:
+            >>> _pass_kv_split("URL: *.example.com/*")
+            ("URL", "*.example.com/*")
+        """
         if ': ' in line:
             return line.split(': ', 1)
         return None,line
-
-    @staticmethod
-    def _get_wsl_home():
-        cp = Pass._subp_run(['bash', '-c', 'wslpath -w "$HOME"'])
-        if cp.stdout:
-            return cp.stdout.strip()
-        return None
-
-    @staticmethod
-    def _subp_run(args, hide=True, collect_output=True):
-        # Hide the console window
-        startupinfo = None
-        creationflags = 0
-        if hide:
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags = subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = subprocess.SW_HIDE
-        else:
-            creationflags = creationflags=subprocess.CREATE_NEW_CONSOLE
-        stdout = None
-        if collect_output:
-            stdout = subprocess.PIPE
-        cp = subprocess.run(args, encoding='utf-8',
-            startupinfo=startupinfo, stdout=stdout, creationflags=creationflags)
-        return cp
