@@ -11,6 +11,11 @@ class Pass(kp.Plugin):
     """
     CAT_FILE = kp.ItemCategory.USER_BASE + 1
     CAT_FILE_LINE = kp.ItemCategory.USER_BASE + 2
+    CAT_FILE_LINE_INDEX = kp.ItemCategory.USER_BASE + 3
+
+    DEFAULT_CLIP_TIME = 45
+    DEFAULT_SHOW_SECRETS = False
+    DEFAULT_SAFE_KEYS = ["URL", "Username"]
 
     def __init__(self):
         super().__init__()
@@ -30,10 +35,20 @@ class Pass(kp.Plugin):
         self.backend.set_password_store(pass_store)
 
         self.log("Password store: {}".format(pass_store))
-        self.CLIP_TIME = settings.get('clip_time', 'pass', fallback=45)
+        self.CLIP_TIME = settings.get('clip_time', 'pass',
+            fallback=self.DEFAULT_CLIP_TIME)
         self._clip_timer = None
 
-        self.SHOW_SECRETS = settings.get_bool('show_secrets', 'main', fallback=False)
+        self.SHOW_SECRETS = settings.get_bool('show_secrets', 'main',
+            fallback=self.DEFAULT_SHOW_SECRETS)
+
+        safe_keys = settings.get('safe_keys', 'main',
+            fallback=None)
+        if safe_keys is None:
+            safe_keys = self.DEFAULT_SAFE_KEYS
+        else:
+            safe_keys = ast.literal_eval(safe_keys)
+        self.SAFE_KEYS = [x.lower() for x in safe_keys]
 
     def on_start(self):
         self._read_config()
@@ -88,22 +103,25 @@ class Pass(kp.Plugin):
                 # Skip empty lines
                 if not l:
                     continue
-                # If SHOW_SECRETS, show full line
-                if self.SHOW_SECRETS:
+                # Show full line if SHOW_SECRETS or a safe key
+                k,_ = self._pass_kv_split(l)
+                if self.SHOW_SECRETS or (k is not None and k.lower() in self.SAFE_KEYS):
                     shown = l
+                    cat = self.CAT_FILE_LINE
+                    target = l
                 else:
                     # Otherwise, display only KEY if it exists, otherwise asterisks
-                    k,_ = self._pass_kv_split(l)
                     shown = '*'*8 if k is None else k
-                items.append(self.create_item(
-                    category=self.CAT_FILE_LINE,
-                    label=shown,
-                    short_desc="",
-                    # If SHOW_SECRETS, store full line
-                    # else, store index of line so we can get the full value later
+                    cat = self.CAT_FILE_LINE_INDEX
+                    # Store index of line so we can get the full value later
                     # This helps us keep secrets out of the log, too, if a user
                     # uses the "show item properties" shortcut
-                    target=l if self.SHOW_SECRETS else str((pass_name,i)),
+                    target = str((pass_name,i))
+                items.append(self.create_item(
+                    category=cat,
+                    label=shown,
+                    short_desc="",
+                    target=target,
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE
                 ))
@@ -115,16 +133,18 @@ class Pass(kp.Plugin):
             # User selected file, put password in clipboard
             data = self.backend.get_password(item.target())
         elif item.category() == self.CAT_FILE_LINE:
-            if self.SHOW_SECRETS:
-                data = item.target()
-            else:
-                tuple_val = ast.literal_eval(item.target())
-                pass_name,lineno = tuple_val
-                data = self.backend.get_pass_contents(pass_name).split('\n')[int(lineno)]
+            data = item.target()
+        elif item.category() == self.CAT_FILE_LINE_INDEX:
+            tuple_val = ast.literal_eval(item.target())
+            pass_name,lineno = tuple_val
+            data = self.backend.get_pass_contents(pass_name).split('\n')[int(lineno)]
+
+        if item.category() in [self.CAT_FILE_LINE, self.CAT_FILE_LINE_INDEX]:
             # User selected a line from the pass file
             # If it is a 'Key: Value' format, put Value in clipboard
             # Otherwise, put full line in clipboard
             data = self._pass_kv_split(data)[1]
+
         if data is not None:
             self._put_data_in_clipboard(data)
 
