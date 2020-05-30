@@ -104,16 +104,21 @@ class Pass(kp.Plugin):
                 if not l:
                     continue
                 # Show full line if SHOW_SECRETS or a safe key
-                k,_ = self._pass_kv_split(l)
+                k = None
+                if i > 0:
+                    # Don't kv split the first line
+                    k,_ = self._pass_kv_split(l)
                 if self.SHOW_SECRETS or (k is not None and k.lower() in self.SAFE_KEYS):
                     shown = l
                     cat = self.CAT_FILE_LINE
-                    target = l
+                    # Store index of line so we can decide whether or not to kv split it
+                    target = str((l,i))
                 else:
                     # Otherwise, display only KEY if it exists, otherwise asterisks
                     shown = '*'*8 if k is None else k
                     cat = self.CAT_FILE_LINE_INDEX
                     # Store index of line so we can get the full value later
+                    # index also helps us decide whether or not to kv split the line
                     # This helps us keep secrets out of the log, too, if a user
                     # uses the "show item properties" shortcut
                     target = str((pass_name,i))
@@ -133,17 +138,21 @@ class Pass(kp.Plugin):
             # User selected file, put password in clipboard
             data = self.backend.get_password(item.target())
         elif item.category() == self.CAT_FILE_LINE:
-            data = item.target()
+            # User selected a line from the pass file
+            tuple_val = ast.literal_eval(item.target())
+            data,lineno = tuple_val
         elif item.category() == self.CAT_FILE_LINE_INDEX:
+            # User selected a line from the pass file
             tuple_val = ast.literal_eval(item.target())
             pass_name,lineno = tuple_val
             data = self.backend.get_pass_contents(pass_name).split('\n')[int(lineno)]
 
         if item.category() in [self.CAT_FILE_LINE, self.CAT_FILE_LINE_INDEX]:
-            # User selected a line from the pass file
-            # If it is a 'Key: Value' format, put Value in clipboard
-            # Otherwise, put full line in clipboard
-            data = self._pass_kv_split(data)[1]
+            # Don't kv split the first line
+            if lineno > 0:
+                # If it is a 'Key: Value' format, put Value in clipboard
+                # Otherwise, put full line in clipboard
+                data = self._pass_kv_split(data)[1]
 
         if data is not None:
             self._put_data_in_clipboard(data)
