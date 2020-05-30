@@ -1,5 +1,6 @@
 import threading
 import hashlib
+import ast
 
 import keypirinha as kp
 import keypirinha_util as kpu
@@ -31,6 +32,8 @@ class Pass(kp.Plugin):
         self.log("Password store: {}".format(pass_store))
         self.CLIP_TIME = settings.get('clip_time', 'pass', fallback=45)
         self._clip_timer = None
+
+        self.SHOW_SECRETS = settings.get_bool('show_secrets', 'main', fallback=False)
 
     def on_start(self):
         self._read_config()
@@ -69,7 +72,7 @@ class Pass(kp.Plugin):
                 items.append(self.create_item(
                     category=self.CAT_FILE,
                     label=name,
-                    short_desc=name,
+                    short_desc="",
                     target=name,
                     args_hint=kp.ItemArgsHint.ACCEPTED,
                     hit_hint=kp.ItemHitHint.IGNORE,
@@ -81,15 +84,26 @@ class Pass(kp.Plugin):
             pass_name = items_chain[-1].target()
             # Display pass file contents
             lines = self.backend.get_pass_contents(pass_name).split('\n')
-            for l in lines:
+            for i,l in enumerate(lines):
                 # Skip empty lines
                 if not l:
                     continue
+                # If SHOW_SECRETS, show full line
+                if self.SHOW_SECRETS:
+                    shown = l
+                else:
+                    # Otherwise, display only KEY if it exists, otherwise asterisks
+                    k,_ = self._pass_kv_split(l)
+                    shown = '*'*8 if k is None else k
                 items.append(self.create_item(
                     category=self.CAT_FILE_LINE,
-                    label=l,
-                    short_desc=l,
-                    target=l,
+                    label=shown,
+                    short_desc="",
+                    # If SHOW_SECRETS, store full line
+                    # else, store index of line so we can get the full value later
+                    # This helps us keep secrets out of the log, too, if a user
+                    # uses the "show item properties" shortcut
+                    target=l if self.SHOW_SECRETS else str((pass_name,i)),
                     args_hint=kp.ItemArgsHint.FORBIDDEN,
                     hit_hint=kp.ItemHitHint.IGNORE
                 ))
@@ -101,10 +115,16 @@ class Pass(kp.Plugin):
             # User selected file, put password in clipboard
             data = self.backend.get_password(item.target())
         elif item.category() == self.CAT_FILE_LINE:
+            if self.SHOW_SECRETS:
+                data = item.target()
+            else:
+                tuple_val = ast.literal_eval(item.target())
+                pass_name,lineno = tuple_val
+                data = self.backend.get_pass_contents(pass_name).split('\n')[int(lineno)]
             # User selected a line from the pass file
             # If it is a 'Key: Value' format, put Value in clipboard
             # Otherwise, put full line in clipboard
-            data = self._pass_kv_split(item.target())[1]
+            data = self._pass_kv_split(data)[1]
         if data is not None:
             self._put_data_in_clipboard(data)
 
