@@ -25,10 +25,10 @@ class Pass(kp.Plugin):
         settings = self.load_settings()
 
         backend = settings.get('backend', 'main', fallback='wsl')
-        if backend == 'wsl':
+        if backend.lower() == 'wsl':
             from .backends.wsl import WslBackend
             self.backend = WslBackend()
-        elif backend == 'gpg4win':
+        elif backend.lower() == 'gpg4win':
             from .backends.gpg4win import Gpg4WinBackend
             self.backend = Gpg4WinBackend()
         else:
