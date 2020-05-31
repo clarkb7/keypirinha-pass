@@ -1,3 +1,4 @@
+import os
 import threading
 import hashlib
 import ast
@@ -27,6 +28,9 @@ class Pass(kp.Plugin):
         if backend == 'wsl':
             from .backends.wsl import WslBackend
             self.backend = WslBackend()
+        elif backend == 'gpg4win':
+            from .backends.gpg4win import Gpg4WinBackend
+            self.backend = Gpg4WinBackend()
         else:
             raise ValueError("Unknown backend: {}".format(backend))
 

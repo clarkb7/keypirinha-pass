@@ -19,4 +19,18 @@ To display each line in a password file, select it in the list and press `tab`. 
 
 See the [configuration file](pass.ini) for other options and their descriptions.
 
-**NOTE: Currently in experimental development.** The only currently implemented backend calls out to `pass` via WSL.
+## Backends
+
+### Gpg4win
+Depends
+* [Gpg4win installed](https://www.gpg4win.org/)
+* `gpg.exe` on Windows PATH
+
+### WSL
+Depends
+* [WSL installed](https://docs.microsoft.com/en-us/windows/wsl/install-win10)
+* `bash.exe` on Windows PATH
+* `pass` installed in WSL
+* `pass` and `wslpath` on WSL path
+
+**NOTE: Currently in experimental development.**
