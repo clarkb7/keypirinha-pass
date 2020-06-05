@@ -16,6 +16,7 @@ To display each line in a password file, select it in the list and press `tab`. 
 * `safe_keys` - Each `KEY` in this list will always have its `VALUE` part shown in keypirinha. Default: `["URL", "Username"]`
 * `show_secrets` - Always show the full uncensored line in keypirinha. Default: `False`
 * `clip_time` - Number of seconds to wait before restoring the clipboard. Default: `45`
+* `save_history` - Save selected password file names to keypirinha history. Default: `True`
 
 See the [configuration file](pass.ini) for other options and their descriptions.
 

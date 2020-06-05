@@ -17,6 +17,7 @@ class Pass(kp.Plugin):
     DEFAULT_CLIP_TIME = 45
     DEFAULT_SHOW_SECRETS = False
     DEFAULT_SAFE_KEYS = ["URL", "Username"]
+    DEFAULT_SAVE_HISTORY = True
 
     def __init__(self):
         super().__init__()
@@ -54,6 +55,9 @@ class Pass(kp.Plugin):
             safe_keys = ast.literal_eval(safe_keys)
         self.SAFE_KEYS = [x.lower() for x in safe_keys]
 
+        self.SAVE_HISTORY = settings.get_bool('save_history', 'main',
+            fallback=self.DEFAULT_SAVE_HISTORY)
+
     def on_start(self):
         self._read_config()
 
@@ -86,6 +90,10 @@ class Pass(kp.Plugin):
 
         items = []
         if items_chain[-1].target() == 'pass':
+            if self.SAVE_HISTORY:
+                hit_hint = kp.ItemHitHint.NOARGS
+            else:
+                hit_hint = kp.ItemHitHint.IGNORE
             # Display list of pass files
             for name in self.names:
                 items.append(self.create_item(
@@ -94,7 +102,7 @@ class Pass(kp.Plugin):
                     short_desc="",
                     target=name,
                     args_hint=kp.ItemArgsHint.ACCEPTED,
-                    hit_hint=kp.ItemHitHint.IGNORE,
+                    hit_hint=hit_hint,
                     loop_on_suggest=True # tab will show contents of file
                 ))
             self.set_suggestions(items, kp.Match.FUZZY, kp.Sort.SCORE_DESC)
