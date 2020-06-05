@@ -71,8 +71,8 @@ class Pass(kp.Plugin):
         catalog.append(
             self.create_item(
                 category=kp.ItemCategory.KEYWORD,
-                label="Pass",
-                short_desc="Password Store",
+                label="Password Store",
+                short_desc="Show password store",
                 target="pass",
                 args_hint=kp.ItemArgsHint.ACCEPTED,
                 hit_hint=kp.ItemHitHint.IGNORE
