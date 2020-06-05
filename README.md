@@ -6,6 +6,10 @@
 
 This is a plugin for the [Keypirinha](http://keypirinha.com) launcher that provides an interface to a [password store](https://www.passwordstore.org/). I wanted [passmenu](https://git.zx2c4.com/password-store/tree/contrib/dmenu) for Windows.
 
+<p align="center">
+  <img src="usage.gif" />
+</p>
+
 ## Usage
 To display a list of your password files, activate keypirinha (default `Ctrl+Win+K`), type `Password Store` until the item comes up then press `tab`.
 
