@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="pass.ico" width="128" height="128" />
+</p>
+
 # Keypirinha Plugin: pass
 
 This is a plugin for the [Keypirinha](http://keypirinha.com) launcher that provides an interface to a [password store](https://www.passwordstore.org/). I wanted [passmenu](https://git.zx2c4.com/password-store/tree/contrib/dmenu) for Windows.
@@ -35,3 +39,6 @@ Depends
 * `pass` and `wslpath` on WSL path
 
 **NOTE: Currently in experimental development.**
+
+## Credits
+Icon made by [Pixel perfect](https://www.flaticon.com/authors/pixel-perfect) from [www.flaticon.com](https://www.flaticon.com/)
