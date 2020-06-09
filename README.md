@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="pass.ico" width="128" height="128" />
+  <img src="src/pass.ico" width="128" height="128" />
 </p>
 
 # Keypirinha Plugin: pass
