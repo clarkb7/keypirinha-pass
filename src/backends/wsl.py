@@ -9,11 +9,11 @@ class WslBackend(PassBackend):
     @classmethod
     def get_default_password_store(cls):
         args = ['bash', '-c', 'echo ${}'.format(cls.ENV_PASS_STORE_DIR)]
-        cp = PassBackend._subp_run(args)
+        cp = super()._subp_run(args)
         passdir = cp.stdout.strip()
         if not passdir:
             return os.path.join(cls._get_wsl_home(), '.password-store')
-        return passdir
+        return self._wslpath_win(passdir)
 
     def get_pass_contents(self, name):
         args = ['bash', '-c', 'pass show {}'.format(shlex.quote(name))]
@@ -26,16 +26,35 @@ class WslBackend(PassBackend):
         lines = cp.stdout
         return lines
 
+    def set_password_store(self, password_store):
+        """Set path to use for password store"""
+        super().set_password_store(password_store)
+        self._wsl_password_store = self._wslpath_wsl(self.password_store)
+
     # Helpers
-    @staticmethod
-    def _get_wsl_home():
-        """Returns $HOME as a windows path"""
-        cp = PassBackend._subp_run(['bash', '-c', 'wslpath -w "$HOME"'])
+    @classmethod
+    def _wslpath(cls, path, style):
+        cp = super()._subp_run(['bash', '-c', 'wslpath {} {}'.format(shlex.quote(style), shlex.quote(path.replace('\\', '\\\\')))])
         if cp.stdout:
             return cp.stdout.strip()
         return None
+    @classmethod
+    def _wslpath_wsl(cls, path):
+        return cls._wslpath(path, '-u')
+    @classmethod
+    def _wslpath_win(cls, path):
+        return cls._wslpath(path, '-w')
+
+    @classmethod
+    def _get_wsl_home(cls):
+        """Returns $HOME as a windows path"""
+        return cls._wslpath_win("$HOME")
 
     def _subp_run(self, args, hide=True, collect_output=True):
-        return super()._subp_run(args, hide=hide, collect_output=collect_output,
-            env={self.ENV_PASS_STORE_DIR:self.password_store})
+        if self._wsl_password_store:
+            env = os.environ.copy()
+            env[self.ENV_PASS_STORE_DIR] = self._wsl_password_store
+        else:
+            env = None
+        return super()._subp_run(args, hide=hide, collect_output=collect_output, env=env)
 
