@@ -64,6 +64,7 @@ class Pass(kp.Plugin):
     def on_events(self, flags):
         if flags & kp.Events.PACKCONFIG:
             self._read_config()
+            self.on_catalog()
 
     def on_catalog(self):
         # Refresh list of names in password-store
