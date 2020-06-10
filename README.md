@@ -10,6 +10,16 @@ This is a plugin for the [Keypirinha](http://keypirinha.com) launcher that provi
   <img src="usage.gif" />
 </p>
 
+## Download
+https://github.com/clarkb7/keypirinha-pass/releases
+
+## Install
+
+Once the `pass.keypirinha-package` file is downloaded, move it to the `InstalledPackage` folder located at:
+
+* `Keypirinha\portable\Profile\InstalledPackages` in **Portable mode**
+* **Or** `%APPDATA%\Keypirinha\InstalledPackages` in **Installed mode**
+
 ## Usage
 To display a list of your password files, activate keypirinha (default `Ctrl+Win+K`), type `Password Store` until the item comes up then press `tab`.
 
@@ -26,9 +36,10 @@ To display each line in a password file, select it in the list and press `tab`. 
 * `clip_time` - Number of seconds to wait before restoring the clipboard. Default: `45`
 * `save_history` - Save selected password file names to keypirinha history. Default: `True`
 
-See the [configuration file](pass.ini) for other options and their descriptions.
+See the [configuration file](src/pass.ini) for other options and their descriptions.
 
 ## Backends
+There are two backends implemented for decrypting your password files. You may configure which is used.
 
 ### Gpg4win
 Depends
@@ -41,8 +52,6 @@ Depends
 * `bash.exe` on Windows PATH
 * `pass` installed in WSL
 * `pass` and `wslpath` on WSL path
-
-**NOTE: Currently in experimental development.**
 
 ## Credits
 Icon made by [Pixel perfect](https://www.flaticon.com/authors/pixel-perfect) from [www.flaticon.com](https://www.flaticon.com/)
