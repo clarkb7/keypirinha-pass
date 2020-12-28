@@ -18,6 +18,7 @@ class PassBackend():
 
     def set_password_store(self, password_store):
         """Set path to use for password store"""
+        password_store = os.path.expandvars(password_store)
         self.password_store = password_store
 
     def get_pass_list(self):

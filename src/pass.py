@@ -39,7 +39,7 @@ class Pass(kp.Plugin):
             fallback=self.backend.password_store)
         self.backend.set_password_store(pass_store)
 
-        self.log("Password store: {}".format(pass_store))
+        self.log("Password store: {} -> {}".format(pass_store, self.backend.password_store))
         self.CLIP_TIME = settings.get('clip_time', 'pass',
             fallback=self.DEFAULT_CLIP_TIME)
         self._clip_timer = None
